@@ -79,24 +79,28 @@ export function createMatch(slots: [SlotSetup, SlotSetup]): MatchState {
   };
 }
 
-/** Same overlap test as the original `collision()`, kept as-is to preserve hit feel. */
+/**
+ * World-space attack box. `y` is the TOP of a fighter (see physics: `y + height` is the feet), so the
+ * box is centred vertically on the torso. (It used to start at the feet, i.e. below the ground.)
+ */
 export function attackBoxOf(f: FighterState, def: CharacterDef) {
   const offset = f.facing === "left" ? def.attackBox.offsetLeft : def.attackBox.offsetRight;
   return {
     x: f.x + offset,
-    y: f.y + f.height,
+    y: f.y + (f.height - def.attackBox.height) / 2,
     width: def.attackBox.width,
     height: def.attackBox.height,
   };
 }
 
+/** True AABB overlap between the attacker's box and the target's body (hurtbox). Symmetric for both sides. */
 export function attackConnects(attacker: FighterState, target: FighterState): boolean {
   const box = attackBoxOf(attacker, getCharacter(attacker.characterId));
   return (
-    box.x + box.width >= target.x + target.width &&
-    box.x <= target.x + target.width &&
-    box.y + box.height >= target.y &&
-    box.y <= target.y + target.height
+    box.x < target.x + target.width &&
+    box.x + box.width > target.x &&
+    box.y < target.y + target.height &&
+    box.y + box.height > target.y
   );
 }
 

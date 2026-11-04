@@ -9,7 +9,8 @@ const medievalRed: CharacterDef = {
   drawOffset: { x: 150, y: 110 },
   body: { width: 80, height: 130 },
   damage: 0.25,
-  attackBox: { width: 160, height: 50, offsetRight: 0, offsetLeft: -50 },
+  // offsetLeft mirrors offsetRight around the body: body.width - box.width - offsetRight (80 - 160 - 0).
+  attackBox: { width: 160, height: 50, offsetRight: 0, offsetLeft: -80 },
   sprites: {
     idle: { src: "idle.png", frames: 8 },
     run: { src: "run.png", frames: 8, left: true },
@@ -33,7 +34,8 @@ const medievalBlue: CharacterDef = {
   drawOffset: { x: 150, y: 110 },
   body: { width: 80, height: 130 },
   damage: 0.25,
-  attackBox: { width: 160, height: 50, offsetRight: 0, offsetLeft: -50 },
+  // offsetLeft mirrors offsetRight around the body: body.width - box.width - offsetRight (80 - 160 - 0).
+  attackBox: { width: 160, height: 50, offsetRight: 0, offsetLeft: -80 },
   sprites: {
     idle: { src: "idle.png", frames: 10 },
     run: { src: "run.png", frames: 6, left: true },
