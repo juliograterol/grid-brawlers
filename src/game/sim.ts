@@ -16,13 +16,15 @@ import {
   GRAVITY,
   JUMP_VELOCITY,
   KNOCKBACK,
-  MATCH_SECONDS,
+  INVULN_TICKS,
   MAX_COMBO,
   MOVE_SPEED,
+  RESPAWN_TICKS,
   TICK_RATE,
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from "./constants";
+import { DEFAULT_RULES, durationTicks, type GameRules } from "./rules";
 import {
   EMPTY_INPUT,
   type AnimName,
@@ -39,7 +41,7 @@ export interface SlotSetup {
   name: string;
 }
 
-export function createFighter(slot: SlotIndex, setup: SlotSetup): FighterState {
+export function createFighter(slot: SlotIndex, setup: SlotSetup, lives: number = DEFAULT_RULES.lives): FighterState {
   const def = getCharacter(setup.characterId);
   return {
     slot,
@@ -55,6 +57,10 @@ export function createFighter(slot: SlotIndex, setup: SlotSetup): FighterState {
     height: def.body.height,
     facing: slot === 0 ? "right" : "left",
     health: 100,
+    lives,
+    maxLives: lives,
+    respawnTicks: 0,
+    invulnTicks: 0,
     damage: def.damage,
     dead: false,
     jumps: 0,
@@ -66,17 +72,30 @@ export function createFighter(slot: SlotIndex, setup: SlotSetup): FighterState {
   };
 }
 
-export function createMatch(slots: [SlotSetup, SlotSetup]): MatchState {
+export function createMatch(slots: [SlotSetup, SlotSetup], rules: GameRules = DEFAULT_RULES): MatchState {
   return {
     tick: 0,
     phase: "countdown",
     countdownTicks: COUNTDOWN_SECONDS * TICK_RATE,
     goTicks: 0,
-    timeLeftTicks: MATCH_SECONDS * TICK_RATE,
+    timeLeftTicks: durationTicks(rules),
     winner: null,
     endReason: null,
-    fighters: [createFighter(0, slots[0]), createFighter(1, slots[1])],
+    fighters: [createFighter(0, slots[0], rules.lives), createFighter(1, slots[1], rules.lives)],
   };
+}
+
+/** Put a fighter back at its spawn point with full health (used after losing a life). */
+function respawn(f: FighterState) {
+  const fresh = createFighter(f.slot, { characterId: f.characterId, name: f.name }, f.lives);
+  Object.assign(f, fresh, { maxLives: f.maxLives, invulnTicks: INVULN_TICKS });
+}
+
+/** More lives wins, then more health; otherwise a tie. */
+function decideWinner(p0: FighterState, p1: FighterState): 0 | 1 | "tie" {
+  if (p0.lives !== p1.lives) return p0.lives > p1.lives ? 0 : 1;
+  if (p0.health !== p1.health) return p0.health > p1.health ? 0 : 1;
+  return "tie";
 }
 
 /**
@@ -271,7 +290,7 @@ export function stepMatch(
   // 2) Combat
   if (live) {
     for (const [a, t] of [[p0, p1], [p1, p0]] as const) {
-      if (t.health <= 0) continue;
+      if (t.health <= 0 || t.invulnTicks > 0) continue;
       if (hitboxActive(a, getCharacter(a.characterId)) && attackConnects(a, t)) {
         applyHit(a, t, rules, events);
       }
@@ -296,11 +315,17 @@ export function stepMatch(
   // 4) Animation + combo bookkeeping
   for (const f of state.fighters) {
     const def = getCharacter(f.characterId);
+    if (f.invulnTicks > 0) f.invulnTicks--;
     if (f.health <= 0 && f.anim !== "death") {
+      f.lives = Math.max(0, f.lives - 1);
+      f.respawnTicks = f.lives > 0 ? RESPAWN_TICKS : 0;
       f.combo.swinging = false;
       f.combo.step = 0;
       setAnim(f, "death");
       events.push({ type: "ko", slot: f.slot });
+    } else if (f.health <= 0 && f.respawnTicks > 0 && state.phase === "fighting" && --f.respawnTicks === 0) {
+      respawn(f);
+      continue;
     } else if (f.health > 0) {
       const moving = moveX[f.slot] !== 0;
       const airborne = !isGrounded(f, 10);
@@ -312,15 +337,15 @@ export function stepMatch(
 
   // 5) End conditions
   if (state.phase === "fighting") {
-    if (p0.health <= 0 || p1.health <= 0) {
+    if (p0.lives <= 0 || p1.lives <= 0) {
       state.phase = "over";
       state.endReason = "ko";
-      state.winner = p0.health === p1.health ? "tie" : p0.health > p1.health ? 0 : 1;
+      state.winner = decideWinner(p0, p1);
     } else if (state.timeLeftTicks <= 0) {
       state.timeLeftTicks = 0;
       state.phase = "over";
       state.endReason = "time";
-      state.winner = p0.health === p1.health ? "tie" : p0.health > p1.health ? 0 : 1;
+      state.winner = decideWinner(p0, p1);
     }
   }
 

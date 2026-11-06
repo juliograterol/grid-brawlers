@@ -11,7 +11,7 @@ export class LocalSession implements MatchSession {
   private rules: MatchRules;
 
   constructor(private config: MatchConfig, private sources: [InputSource, InputSource]) {
-    this.state = createMatch([config.slots[0], config.slots[1]]);
+    this.state = createMatch([config.slots[0], config.slots[1]], config.rules);
     this.rules = {
       // Original: the AI enemy dealt double damage.
       slotDamageMultiplier: [1, config.slots[1].controller === "ai" ? AI_DAMAGE_MULTIPLIER : 1],

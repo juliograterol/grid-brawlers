@@ -31,6 +31,13 @@ export interface FighterState {
   facing: Facing;
 
   health: number;
+  /** Lives left (the current one included) and the starting amount, from the match rules. */
+  lives: number;
+  maxLives: number;
+  /** Ticks until a KO'd fighter with lives left respawns; 0 when not waiting to respawn. */
+  respawnTicks: number;
+  /** Ticks of damage immunity after a respawn. */
+  invulnTicks: number;
   damage: number;
   /** True once the death animation finished. */
   dead: boolean;
@@ -67,6 +74,7 @@ export interface MatchState {
   timeLeftTicks: number;
   /** null while playing, "tie" or a slot index when over. */
   winner: SlotIndex | "tie" | null;
+  /** "ko" = a fighter ran out of lives, "time" = the clock ran out. */
   endReason: "ko" | "time" | null;
   fighters: [FighterState, FighterState];
 }

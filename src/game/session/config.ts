@@ -1,3 +1,5 @@
+import type { GameRules } from "../rules";
+
 export type GameMode = "single" | "local" | "online";
 
 /**
@@ -21,5 +23,7 @@ export interface SlotConfig {
 export interface MatchConfig {
   mode: GameMode;
   backgroundId: string;
+  /** Identical in every mode; online, the host's choice is sent to the guest before the match. */
+  rules: GameRules;
   slots: [SlotConfig, SlotConfig];
 }

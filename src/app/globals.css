@@ -67,6 +67,21 @@ input {
 .hint { opacity: 0.7; font-size: 0.85rem; margin: 0; }
 .actions { display: flex; gap: 1rem; }
 
+/* ---------- Match rules screen (sized to fit a 1333x560 landscape viewport) ---------- */
+.rules-menu { gap: 1rem; }
+.rules-panel { flex: none; width: min(560px, 100%); display: flex; flex-direction: column; gap: 0.6rem; }
+.rules-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.rules-label { font-size: 1rem; }
+.rules-input { width: 7rem; margin: 0; text-align: center; font-size: 1.1rem; }
+.rules-input[aria-invalid="true"] { border-color: #ff5252; }
+.hint.error { color: #ff8a80; opacity: 1; }
+.lives-group { display: flex; gap: 0.6rem; }
+.lives-btn { width: 3.2rem; height: 3.2rem; background: #000; border: 2px solid #555; border-radius: 6px; font-size: 1.2rem; cursor: pointer; }
+.lives-btn:hover { border-color: #aaa; }
+.lives-btn.selected { border-color: #fff; background: #c62828; box-shadow: 0 0 0 2px #fff; }
+.lives-btn:focus-visible, .rules-input:focus-visible { outline: 3px solid #ffd54f; outline-offset: 2px; }
+@media (max-height: 560px) { .rules-menu { gap: 0.6rem; padding: 0.8rem 1rem; } }
+
 /* ---------- Match stage (everything is sized from the fit scale --s) ---------- */
 .stage-root {
   position: fixed;

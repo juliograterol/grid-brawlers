@@ -4,6 +4,7 @@
 import { getCharacter } from "@/data/characters";
 import { resolveSprite } from "@/data/sprites";
 import { TICK_RATE, WORLD_HEIGHT, WORLD_WIDTH } from "../constants";
+import { formatClock } from "../rules";
 import type { FighterState, MatchState } from "../types";
 import { assets } from "./assets";
 
@@ -92,6 +93,9 @@ export class Renderer {
     // Health bars: P1 drains toward the left edge, P2 toward the right edge (original layout).
     this.bar(BAR_PAD, barW, p1, "right");
     this.bar(WORLD_WIDTH / 2 + TIMER_W / 2, barW, p2, "left");
+    // Lives sit under each bar, next to the outer edge.
+    this.lives(BAR_PAD, p1, "left");
+    this.lives(WORLD_WIDTH - BAR_PAD, p2, "right");
 
     // Timer box
     const tx = WORLD_WIDTH / 2 - TIMER_W / 2;
@@ -103,11 +107,14 @@ export class Renderer {
 
     let timerText = "";
     if (state.phase === "fighting") {
-      timerText = state.goTicks > 0 ? "GO!" : String(Math.ceil(state.timeLeftTicks / TICK_RATE));
+      // The clock is always visible (the "GO!" banner is drawn big in the centre instead).
+      timerText = formatClock(state.timeLeftTicks / TICK_RATE);
     } else if (state.phase === "over") {
-      timerText = state.endReason === "ko" ? "K.O." : "0";
+      timerText = state.endReason === "ko" ? "K.O." : "0:00";
+    } else {
+      timerText = formatClock(state.timeLeftTicks / TICK_RATE);
     }
-    this.centerText(timerText, WORLD_WIDTH / 2, BAR_PAD + TIMER_H / 2, 20, "white");
+    this.centerText(timerText, WORLD_WIDTH / 2, BAR_PAD + TIMER_H / 2, timerText.length > 4 ? 16 : 20, "white");
 
     // Big centre banner
     let banner = "";
@@ -131,6 +138,26 @@ export class Renderer {
     ctx.strokeStyle = "white";
     ctx.lineWidth = 2;
     ctx.strokeRect(x, BAR_PAD, w, BAR_H);
+  }
+
+  /** One heart per life: filled = left, outline = lost. `edge` is the x of the bar's outer edge. */
+  private lives(edge: number, f: FighterState, side: "left" | "right") {
+    const { ctx } = this;
+    const size = 9;
+    const gap = 8;
+    const y = BAR_PAD + BAR_H + 8;
+    for (let i = 0; i < f.maxLives; i++) {
+      const x = side === "left" ? edge + i * (size * 2 + gap) : edge - size * 2 - i * (size * 2 + gap);
+      ctx.beginPath();
+      ctx.moveTo(x + size, y + size * 1.7);
+      ctx.bezierCurveTo(x - size * 0.4, y + size * 0.9, x + size * 0.1, y - size * 0.4, x + size, y + size * 0.55);
+      ctx.bezierCurveTo(x + size * 1.9, y - size * 0.4, x + size * 2.4, y + size * 0.9, x + size, y + size * 1.7);
+      ctx.fillStyle = i < f.lives ? "#e53935" : "rgba(0,0,0,0.55)";
+      ctx.fill();
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
   }
 
   private centerText(text: string, x: number, y: number, size: number, color: string, shadow = false) {

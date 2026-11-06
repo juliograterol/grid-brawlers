@@ -14,7 +14,9 @@ export const KNOCKBACK = 10;
 export const TICK_RATE = 60;
 export const TICK_MS = 1000 / TICK_RATE;
 
-export const MATCH_SECONDS = 60;
+/** Respawn delay after losing a life (lets the death animation play) and the grace period afterwards. */
+export const RESPAWN_TICKS = TICK_RATE * 2;
+export const INVULN_TICKS = TICK_RATE * 1.5;
 /** Original showed 3, 2, 1, GO! */
 export const COUNTDOWN_SECONDS = 3;
 export const GO_TICKS = TICK_RATE; // "GO!" banner length

@@ -53,7 +53,7 @@ export class GuestSession implements MatchSession {
   private off: () => void;
 
   constructor(config: MatchConfig, private local: InputSource, private transport: MatchTransport) {
-    this.state = createMatch([config.slots[0], config.slots[1]]);
+    this.state = createMatch([config.slots[0], config.slots[1]], config.rules);
     this.off = transport.onMessage((m) => {
       // Snapshots may arrive late or out of order. A big backwards jump means the host restarted the match.
       if (m.type !== "snapshot" || (m.tick <= this.lastTick && m.tick > this.lastTick - 120)) return;

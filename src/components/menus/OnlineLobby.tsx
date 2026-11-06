@@ -8,6 +8,8 @@ import type { MatchConfig } from "@/game/session/config";
 import { createRoom, joinRoom, type HostedRoom } from "@/net/rooms";
 import { isValidRoomId } from "@/net/roomId";
 import type { MatchTransport, PlayerPick } from "@/net/types";
+import { DEFAULT_RULES, sanitizeRules, type GameRules } from "@/game/rules";
+import RulesScreen from "./RulesScreen";
 import SpritePreview from "./SpritePreview";
 
 interface Props {
@@ -165,6 +167,8 @@ function Room({
   const [myName, setMyName] = useState("");
   const [peer, setPeer] = useState<PlayerPick | null>(null);
   const [backgroundId, setBackgroundId] = useState(BACKGROUNDS[0].id);
+  /** Host only: START opens the rules screen; the guest keeps waiting here until "start" (with the rules) arrives. */
+  const [configuring, setConfiguring] = useState(false);
 
   // Slot 0 (host) picks first; the guest sees what is left. Both sides compute the same result.
   const picks = useMemo(
@@ -198,6 +202,7 @@ function Room({
           {
             mode: "online",
             backgroundId: m.backgroundId,
+            rules: sanitizeRules(m.rules), // the host's rules; identical on both clients
             slots: [
               { ...m.slots[0], controller: "remote" },
               { ...m.slots[1], controller: "online-local" },
@@ -220,17 +225,18 @@ function Room({
     announce();
   }, [myPick, myDisplayName, announce]);
 
-  const start = () => {
+  const start = (rules: GameRules) => {
     if (!isHost || !peer) return;
     const slots: [PlayerPick, PlayerPick] = [
       { characterId: picks[0]!, name: myDisplayName },
       { characterId: picks[1]!, name: peer.name },
     ];
-    transport.send({ type: "start", backgroundId, slots });
+    transport.send({ type: "start", backgroundId, slots, rules });
     onStart(
       {
         mode: "online",
         backgroundId,
+        rules,
         slots: [
           { ...slots[0], controller: "online-local" },
           { ...slots[1], controller: "remote" },
@@ -239,6 +245,10 @@ function Room({
       transport,
     );
   };
+
+  if (configuring && isHost && peer) {
+    return <RulesScreen onBack={() => setConfiguring(false)} onConfirm={start} />;
+  }
 
   const opponentChar = peer ? getCharacter(picks[isHost ? 1 : 0] ?? peer.characterId) : null;
 
@@ -312,7 +322,7 @@ function Room({
       <div className="actions">
         <button className="btn ghost" onClick={onBack}>Leave</button>
         {isHost ? (
-          <button className="btn" onClick={start} disabled={!peer}>START</button>
+          <button className="btn" onClick={() => setConfiguring(true)} disabled={!peer}>START</button>
         ) : (
           <p className="hint">Waiting for the host to start…</p>
         )}

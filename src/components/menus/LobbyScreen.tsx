@@ -5,6 +5,8 @@ import { BACKGROUNDS } from "@/data/backgrounds";
 import { CHARACTERS } from "@/data/characters";
 import { availableCharacters, normalizePicks } from "@/data/selection";
 import type { GameMode, MatchConfig } from "@/game/session/config";
+import { DEFAULT_RULES } from "@/game/rules";
+import RulesScreen from "./RulesScreen";
 import SpritePreview from "./SpritePreview";
 
 interface Props {
@@ -22,6 +24,8 @@ export default function LobbyScreen({ mode, onStart, onBack }: Props) {
   );
   const [names, setNames] = useState<[string, string]>(["", ""]);
   const [backgroundId, setBackgroundId] = useState(BACKGROUNDS[0].id);
+  /** Set once START is pressed: the rules screen is shown before the match begins. */
+  const [pending, setPending] = useState<MatchConfig | null>(null);
 
   // Slot 0 picks first; slot 1 only sees what is left.
   const options = useMemo(() => picks.map((_, i) => availableCharacters(CHARACTERS, picks, i)), [picks]);
@@ -34,9 +38,10 @@ export default function LobbyScreen({ mode, onStart, onBack }: Props) {
   const start = () => {
     if (!ready) return;
     const fallback = single ? ["Player 1", "CPU"] : ["Player 1", "Player 2"];
-    onStart({
+    setPending({
       mode,
       backgroundId,
+      rules: DEFAULT_RULES,
       slots: [
         {
           characterId: picks[0]!,
@@ -51,6 +56,10 @@ export default function LobbyScreen({ mode, onStart, onBack }: Props) {
       ],
     });
   };
+
+  if (pending) {
+    return <RulesScreen onBack={() => setPending(null)} onConfirm={(rules) => onStart({ ...pending, rules })} />;
+  }
 
   return (
     <main className="menu lobby">

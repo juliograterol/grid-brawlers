@@ -4,6 +4,7 @@
 // and renders the snapshots the host sends back (see game/session/onlineSessions.ts).
 // There is intentionally no chat message type.
 
+import type { GameRules } from "@/game/rules";
 import type { GameEvent, InputFrame, MatchState, SlotIndex } from "@/game/types";
 
 export type RoomId = string;
@@ -18,7 +19,7 @@ export type NetMessage =
   /** Lobby: each side announces its pick (host = slot 0, guest = slot 1). */
   | ({ type: "ready"; slot: SlotIndex } & PlayerPick)
   /** Host -> guest: the match begins. */
-  | { type: "start"; backgroundId: string; slots: [PlayerPick, PlayerPick] }
+  | { type: "start"; backgroundId: string; slots: [PlayerPick, PlayerPick]; rules: GameRules }
   /** Guest -> host: a change in held direction, or a jump/attack edge. */
   | { type: "input"; frame: InputFrame }
   /** Host -> guest, every tick: authoritative state plus the events produced by that tick. */
