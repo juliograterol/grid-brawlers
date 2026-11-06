@@ -26,3 +26,12 @@ npm run build && npm start
 - `src/game/render` canvas renderer; `src/game/createGame.ts` wires everything together
 - `src/net` online types (rooms, transport) - interfaces only
 - `src/components` React menus and the canvas host
+
+## Online play (WebRTC + Pusher)
+1. Create a free Channels app at pusher.com and copy `.env.example` to `.env.local` with its credentials.
+2. `npm run dev`; open the game in two browsers, **Online** -> one creates a room, the other joins with the 5-letter code.
+
+Pusher is only the signaling relay (`/api/room`, a handful of messages per match). After the handshake the browsers talk
+directly over WebRTC data channels. The host (slot 0) runs the simulation; the guest sends inputs and renders snapshots.
+Code: `src/net` (signaling, rooms, transport) and `src/game/session/onlineSessions.ts`.
+STUN only (no TURN): players behind strict/symmetric NATs may be unable to connect.

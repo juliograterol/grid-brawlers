@@ -120,3 +120,5 @@ input {
   0%, 20% { transform: rotate(0); }
   60%, 100% { transform: rotate(-90deg); }
 }
+
+.room-code { font-family: var(--font-pixel), monospace; font-size: clamp(1.5rem, 6vw, 2.6rem); letter-spacing: 0.3em; margin: 0.5rem 0; user-select: text; -webkit-user-select: text; }

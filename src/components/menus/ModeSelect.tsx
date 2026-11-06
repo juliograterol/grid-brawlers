@@ -19,10 +19,9 @@ export default function ModeSelect({ onSelect }: Props) {
           Local Multiplayer
           <small>P1: A/D/W + F · P2: arrows + 0</small>
         </button>
-        {/* ONLINE EXTENSION POINT: enable once a RoomDirectory implementation exists (see src/net). */}
-        <button className="btn big" disabled>
-          Online Arenas
-          <small>Coming soon · join by room ID or find an open arena</small>
+        <button className="btn big" onClick={() => onSelect("online")}>
+          Online
+          <small>Create a room or join a friend with a room code · A/D/W + F or click</small>
         </button>
       </div>
     </main>
