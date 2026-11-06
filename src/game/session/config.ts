@@ -8,8 +8,9 @@ export type Controller =
   | "keyboard-p1" // A/D/W + F (local multiplayer, player 1)
   | "keyboard-p2" // arrows + 0 (local multiplayer, player 2)
   | "solo-p1" // A/D/W + mouse/tap to attack (single player)
+  | "online-local" // A/D/W + F, mouse/tap to attack too (the local player in an online match)
   | "ai"
-  | "remote"; // fed by a network transport (not implemented yet)
+  | "remote"; // the other player in an online match
 
 export interface SlotConfig {
   characterId: string;

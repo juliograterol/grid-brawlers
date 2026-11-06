@@ -5,11 +5,13 @@ import { getBackground } from "@/data/backgrounds";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@/game/constants";
 import { createGame, type GameHandle } from "@/game/createGame";
 import type { MatchConfig } from "@/game/session/config";
+import type { MatchTransport } from "@/net/types";
 import { useFitScale } from "@/hooks/useFitScale";
 import TouchControls from "./TouchControls";
 
 interface Props {
   config: MatchConfig;
+  transport?: MatchTransport;
   onExit: () => void;
 }
 
@@ -17,12 +19,13 @@ interface Props {
  * Hosts the canvas. React only mounts/unmounts the game and shows the end-of-match buttons;
  * the game loop itself runs outside React and never triggers a re-render per frame.
  */
-export default function GameStage({ config, onExit }: Props) {
+export default function GameStage({ config, transport, onExit }: Props) {
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const handleRef = useRef<GameHandle | null>(null);
   const [handle, setHandle] = useState<GameHandle | null>(null);
   const [over, setOver] = useState(false);
+  const [disconnected, setDisconnected] = useState(false);
   const scale = useFitScale();
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
@@ -34,7 +37,10 @@ export default function GameStage({ config, onExit }: Props) {
       canvas: canvasRef.current!,
       stage: stageRef.current!,
       config,
+      transport,
       onMatchOver: () => setOver(true),
+      onRestart: () => setOver(false),
+      onDisconnect: () => setDisconnected(true),
     }).then((h) => {
       if (cancelled) return h.dispose();
       created = h;
@@ -48,7 +54,7 @@ export default function GameStage({ config, onExit }: Props) {
       handleRef.current = null;
       setHandle(null);
     };
-  }, [config]);
+  }, [config, transport]);
 
   useEffect(() => {
     handleRef.current?.resize(scale);
@@ -63,7 +69,7 @@ export default function GameStage({ config, onExit }: Props) {
   }, [onExit]);
 
   const bg = getBackground(config.backgroundId);
-  const solo = config.slots[0].controller === "solo-p1";
+  const solo = config.slots.some((s) => s.controller === "solo-p1" || s.controller === "online-local");
 
   return (
     <div className="stage-root" style={{ ["--s" as string]: scale }}>
@@ -78,7 +84,14 @@ export default function GameStage({ config, onExit }: Props) {
 
       <button className="btn ghost exit-btn" onClick={onExit}>Menu (Esc)</button>
 
-      {over && (
+      {disconnected && (
+        <div className="result-actions">
+          <p className="hint">Your opponent disconnected.</p>
+          <button className="btn" onClick={onExit}>Back to menu</button>
+        </div>
+      )}
+
+      {over && !disconnected && (
         <div className="result-actions">
           <button
             className="btn"

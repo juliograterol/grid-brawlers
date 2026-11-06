@@ -27,6 +27,12 @@ export function createInputSource(controller: Controller, env: InputEnv): InputS
         new PointerAttackSource(env.stage),
         env.touch,
       ]);
+    case "online-local":
+      return new CompositeSource([
+        new KeyboardSource(P1_KEYS),
+        new PointerAttackSource(env.stage),
+        env.touch,
+      ]);
     case "ai":
       return new AISource();
     case "remote":

@@ -1,54 +1,39 @@
-// ONLINE EXTENSION POINT (types only, no networking yet).
+// Online play: peer-to-peer over WebRTC, with Pusher used only for the initial handshake (see signaling.ts).
 //
-// Intended wiring once a backend exists:
-//   1. Lobby UI calls RoomDirectory.listOpenRooms() ("find open arenas") or createRoom()/joinRoom(roomId).
-//   2. joinRoom() resolves to a MatchTransport. The room assigns slots: the local player gets a local
-//      controller ("solo-p1"/keyboard) and the other slot gets controller "remote".
-//   3. createGame() builds a RemoteInputSource for the remote slot and the transport pushes
-//      remote InputFrames into it (see game/input/remote.ts). For an authoritative server, implement
-//      a MatchSession (game/session/types.ts) that applies server snapshots instead of LocalSession.
+// Topology: the HOST (slot 0) runs the real simulation. The GUEST (slot 1) sends its inputs to the host
+// and renders the snapshots the host sends back (see game/session/onlineSessions.ts).
 // There is intentionally no chat message type.
 
-import type { InputFrame, MatchState, SlotIndex } from "@/game/types";
+import type { GameEvent, InputFrame, MatchState, SlotIndex } from "@/game/types";
 
 export type RoomId = string;
 
-export type RoomStatus = "open" | "full" | "in-match";
-
-export interface RoomInfo {
-  id: RoomId;
-  hostName: string;
-  status: RoomStatus;
-  players: number;
-  maxPlayers: number;
-  backgroundId: string;
-  createdAt: number;
-}
-
-export interface CreateRoomOptions {
-  hostName: string;
-  backgroundId: string;
-  /** Listed in "find open arenas" when true; join-by-ID only when false. */
-  public: boolean;
-}
-
-export interface RoomDirectory {
-  listOpenRooms(): Promise<RoomInfo[]>;
-  createRoom(options: CreateRoomOptions): Promise<{ room: RoomInfo; transport: MatchTransport }>;
-  joinRoom(id: RoomId): Promise<{ room: RoomInfo; transport: MatchTransport }>;
+export interface PlayerPick {
+  characterId: string;
+  name: string;
 }
 
 /** Messages on the wire. Game traffic only. */
 export type NetMessage =
-  | { type: "input"; slot: SlotIndex; tick: number; frame: InputFrame }
-  | { type: "snapshot"; tick: number; state: MatchState }
-  | { type: "ready"; slot: SlotIndex; characterId: string; name: string }
-  | { type: "start"; seed: number; backgroundId: string };
+  /** Lobby: each side announces its pick (host = slot 0, guest = slot 1). */
+  | ({ type: "ready"; slot: SlotIndex } & PlayerPick)
+  /** Host -> guest: the match begins. */
+  | { type: "start"; backgroundId: string; slots: [PlayerPick, PlayerPick] }
+  /** Guest -> host: a change in held direction, or a jump/attack edge. */
+  | { type: "input"; frame: InputFrame }
+  /** Host -> guest, every tick: authoritative state plus the events produced by that tick. */
+  | { type: "snapshot"; tick: number; state: MatchState; events: GameEvent[] }
+  /** Guest -> host: please restart the match. */
+  | { type: "rematch-request" }
+  /** Host -> guest: the match was restarted. */
+  | { type: "rematch" };
 
 export interface MatchTransport {
   readonly roomId: RoomId;
   readonly localSlot: SlotIndex;
   send(message: NetMessage): void;
   onMessage(handler: (message: NetMessage) => void): () => void;
+  /** Fires once when the peer connection is lost or closed. */
+  onClose(handler: () => void): () => void;
   close(): void;
 }

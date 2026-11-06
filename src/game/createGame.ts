@@ -13,6 +13,9 @@ import { Renderer } from "./render/renderer";
 import type { MatchConfig } from "./session/config";
 import { createInputSource } from "./session/inputs";
 import { LocalSession } from "./session/localSession";
+import { GuestSession, HostSession } from "./session/onlineSessions";
+import { RemoteInputSource } from "./input/remote";
+import type { MatchTransport } from "@/net/types";
 import type { MatchSession } from "./session/types";
 
 export interface GameHandle {
@@ -29,6 +32,12 @@ export interface CreateGameOptions {
   stage: HTMLElement;
   config: MatchConfig;
   /** Fired once, shortly after the match ends (lets the death animation play first). */
+  /** Online match: slot `transport.localSlot` is played here, the other slot over the wire. */
+  transport?: MatchTransport;
+  /** The match was restarted by the other side (online). */
+  onRestart?: () => void;
+  /** The other player left or the connection dropped (online). */
+  onDisconnect?: () => void;
   onMatchOver?: (result: { winner: 0 | 1 | "tie"; name: string | null }) => void;
 }
 
@@ -53,13 +62,43 @@ export async function createGame(opts: CreateGameOptions): Promise<GameHandle> {
   let overTicks = 0;
   let reported = false;
 
+  const transport = opts.transport;
+
   const buildSession = (): MatchSession => {
     overTicks = 0;
     reported = false;
+    if (transport) {
+      const local = createInputSource(config.slots[transport.localSlot].controller, { stage, touch });
+      if (transport.localSlot === 0) {
+        return new HostSession(config, local, new RemoteInputSource(), transport);
+      }
+      return new GuestSession(config, local, transport);
+    }
     const sources = config.slots.map((s) => createInputSource(s.controller, { stage, touch }));
     return new LocalSession(config, sources as [InputSource, InputSource]);
   };
   let session: MatchSession = buildSession();
+
+  const restartSession = () => {
+    session.dispose();
+    session = buildSession();
+  };
+  const offNet: (() => void)[] = [];
+  if (transport) {
+    offNet.push(
+      transport.onMessage((m) => {
+        if (m.type === "rematch" && transport.localSlot === 1) {
+          restartSession();
+          opts.onRestart?.();
+        } else if (m.type === "rematch-request" && transport.localSlot === 0) {
+          restartSession();
+          transport.send({ type: "rematch" });
+          opts.onRestart?.();
+        }
+      }),
+      transport.onClose(() => opts.onDisconnect?.()),
+    );
+  }
 
   const loop = new GameLoop(
     () => {
@@ -79,10 +118,15 @@ export async function createGame(opts: CreateGameOptions): Promise<GameHandle> {
     touch,
     resize: (s) => renderer.resize(s),
     restart() {
-      session.dispose();
-      session = buildSession();
+      if (transport?.localSlot === 1) {
+        transport.send({ type: "rematch-request" }); // the host restarts and tells us back
+        return;
+      }
+      restartSession();
+      transport?.send({ type: "rematch" });
     },
     dispose() {
+      offNet.forEach((off) => off());
       loop.stop();
       session.dispose();
     },
