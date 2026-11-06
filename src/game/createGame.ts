@@ -4,6 +4,7 @@
 import { getCharacter } from "@/data/characters";
 import { allSpriteUrls } from "@/data/sprites";
 import { AudioManager } from "./audio/audio";
+import { music } from "./audio/music";
 import { TICK_RATE } from "./constants";
 import type { InputSource } from "./input/types";
 import { TouchSource } from "./input/touch";
@@ -61,12 +62,15 @@ export async function createGame(opts: CreateGameOptions): Promise<GameHandle> {
 
   let overTicks = 0;
   let reported = false;
+  let musicStopped = false;
 
   const transport = opts.transport;
 
   const buildSession = (): MatchSession => {
     overTicks = 0;
     reported = false;
+    musicStopped = false;
+    music.play("fight"); // fight start / rematch: crossfade from the menu music (or restart after the fight ended)
     if (transport) {
       const local = createInputSource(config.slots[transport.localSlot].controller, { stage, touch });
       if (transport.localSlot === 0) {
@@ -104,6 +108,10 @@ export async function createGame(opts: CreateGameOptions): Promise<GameHandle> {
     () => {
       const events = session.step();
       audio.handle(events, session.state);
+      if (session.state.phase === "over" && !musicStopped) {
+        musicStopped = true;
+        music.stop(); // the fight ended
+      }
       if (session.state.phase === "over" && !reported && ++overTicks >= RESULT_DELAY_TICKS) {
         reported = true;
         const w = session.state.winner as 0 | 1 | "tie";
@@ -128,6 +136,7 @@ export async function createGame(opts: CreateGameOptions): Promise<GameHandle> {
     dispose() {
       offNet.forEach((off) => off());
       loop.stop();
+      audio.dispose();
       session.dispose();
     },
   };

@@ -24,6 +24,15 @@ input {
   color: inherit;
 }
 
+/* Retro palette taken from the title logo (new UI uses these). */
+:root {
+  --px-yellow: #ffee00;
+  --px-amber: #f5ad00;
+  --px-orange: #fb7a00;
+  --px-red: #a00000;
+  --px-black: #000;
+}
+
 /* ---------- Buttons ---------- */
 .btn {
   background: #c62828;
@@ -50,7 +59,8 @@ input {
   padding: 1.5rem 1rem;
   background: radial-gradient(circle at 50% 30%, #1b1b2e, #000 70%);
 }
-.logo { font-family: var(--font-pixel), monospace; font-size: clamp(1.4rem, 5vw, 3rem); text-align: center; margin: 0 0 1rem; }
+.logo { margin: 0; line-height: 0; }
+.logo img { width: min(560px, 80vw, 55vh); height: auto; image-rendering: pixelated; display: block; }
 .mode-list { display: flex; flex-direction: column; gap: 0.9rem; align-items: center; }
 .lobby h2 { font-family: var(--font-pixel), monospace; font-size: clamp(1rem, 3vw, 1.6rem); margin: 0; }
 .lobby h3 { margin: 0 0 0.5rem; font-size: 1rem; opacity: 0.85; }
@@ -73,12 +83,13 @@ input {
 .rules-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .rules-label { font-size: 1rem; }
 .rules-input { width: 7rem; margin: 0; text-align: center; font-size: 1.1rem; }
+.rules-input { border-color: var(--px-yellow); }
 .rules-input[aria-invalid="true"] { border-color: #ff5252; }
 .hint.error { color: #ff8a80; opacity: 1; }
 .lives-group { display: flex; gap: 0.6rem; }
 .lives-btn { width: 3.2rem; height: 3.2rem; background: #000; border: 2px solid #555; border-radius: 6px; font-size: 1.2rem; cursor: pointer; }
 .lives-btn:hover { border-color: #aaa; }
-.lives-btn.selected { border-color: #fff; background: #c62828; box-shadow: 0 0 0 2px #fff; }
+.lives-btn.selected { border-color: var(--px-yellow); background: var(--px-orange); color: var(--px-black); box-shadow: 3px 3px 0 var(--px-black); }
 .lives-btn:focus-visible, .rules-input:focus-visible { outline: 3px solid #ffd54f; outline-offset: 2px; }
 @media (max-height: 560px) { .rules-menu { gap: 0.6rem; padding: 0.8rem 1rem; } }
 
@@ -97,6 +108,17 @@ input {
 .stage-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .exit-btn { position: absolute; left: 8px; bottom: 8px; font-size: 0.75rem; padding: 0.4rem 0.8rem; }
 .result-actions { position: absolute; left: 0; right: 0; bottom: 18%; display: flex; gap: 1rem; justify-content: center; }
+
+/* ---------- Sound settings ---------- */
+.sound-settings { position: fixed; top: 8px; right: 8px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.sound-settings.in-match { top: auto; bottom: 8px; right: auto; left: 50%; transform: translateX(-50%); align-items: center; flex-direction: column-reverse; }
+.sound-fab { font-family: var(--font-pixel), monospace; font-size: 0.65rem; padding: 0.5rem 0.7rem; border-color: var(--px-yellow); box-shadow: 3px 3px 0 var(--px-black); }
+.sound-panel { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.7rem; background: var(--px-black); border: 3px solid var(--px-yellow); box-shadow: 4px 4px 0 var(--px-red); min-width: 240px; }
+.sound-toggle { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: #1a0a00; border: 2px solid var(--px-amber); padding: 0.55rem 0.7rem; cursor: pointer; font-size: 0.85rem; }
+.sound-toggle b { font-family: var(--font-pixel), monospace; font-size: 0.7rem; color: #ff8a80; }
+.sound-toggle.on b { color: var(--px-yellow); }
+.sound-toggle:hover, .sound-fab:hover { border-color: var(--px-yellow); filter: brightness(1.2); }
+.sound-toggle:focus-visible, .sound-fab:focus-visible { outline: 3px solid var(--px-yellow); outline-offset: 2px; }
 
 /* ---------- Touch controls ---------- */
 .touch-controls { position: absolute; inset: 0; pointer-events: none; }

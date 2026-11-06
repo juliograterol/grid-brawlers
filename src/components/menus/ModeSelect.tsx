@@ -9,7 +9,10 @@ interface Props {
 export default function ModeSelect({ onSelect }: Props) {
   return (
     <main className="menu">
-      <h1 className="logo">Grid Brawlers</h1>
+      <h1 className="logo">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/assets/grid-brawlers-title.png" alt="Grid Brawlers" />
+      </h1>
       <div className="mode-list">
         <button className="btn big" onClick={() => onSelect("single")}>
           Single Player

@@ -1,5 +1,6 @@
 import type { GameEvent, MatchState } from "../types";
 import { getCharacter } from "@/data/characters";
+import { getSound, subscribeSound } from "./settings";
 
 const BASE = "/assets/audio/";
 const NAMES = ["swordAttack", "swordClash", "hitSound1", "hitSound2", "swordDeath1", "swordDeath2"];
@@ -8,6 +9,14 @@ const NAMES = ["swordAttack", "swordClash", "hitSound1", "hitSound2", "swordDeat
 export class AudioManager {
   private base = new Map<string, HTMLAudioElement>();
   muted = false;
+  private playing = new Set<HTMLAudioElement>();
+  private off = subscribeSound(() => {
+    // Turning effects off cuts any effect that is still sounding.
+    if (!getSound().sfx) {
+      this.playing.forEach((a) => a.pause());
+      this.playing.clear();
+    }
+  });
 
   constructor() {
     for (const n of NAMES) {
@@ -18,12 +27,20 @@ export class AudioManager {
   }
 
   private play(name: string, volume = 1) {
-    if (this.muted) return;
+    if (this.muted || !getSound().sfx) return; // the "sound effects" switch covers every in-fight SFX
     const src = this.base.get(name);
     if (!src) return;
     const a = src.cloneNode() as HTMLAudioElement; // allows overlapping plays
     a.volume = volume;
-    a.play().catch(() => {}); // autoplay restrictions: ignore
+    this.playing.add(a);
+    a.addEventListener("ended", () => this.playing.delete(a), { once: true });
+    a.play().catch(() => this.playing.delete(a)); // autoplay restrictions: ignore
+  }
+
+  dispose() {
+    this.off();
+    this.playing.forEach((a) => a.pause());
+    this.playing.clear();
   }
 
   handle(events: GameEvent[], state: Readonly<MatchState>) {
