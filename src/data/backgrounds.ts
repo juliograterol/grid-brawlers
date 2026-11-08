@@ -7,6 +7,11 @@ export const BACKGROUNDS: readonly BackgroundDef[] = [
     name: "Fight Zone",
     src: "/assets/backgrounds/fight-zone.gif",
   },
+  {
+    id: "pixel-town",
+    name: "Small Town",
+    src: "/assets/backgrounds/pixel-town.gif",
+  },
 ];
 
 const byId = new Map(BACKGROUNDS.map((b) => [b.id, b]));
