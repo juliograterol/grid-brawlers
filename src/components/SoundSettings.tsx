@@ -3,26 +3,42 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { DEFAULT_SOUND, getSound, setSound, subscribeSound } from "@/game/audio/settings";
 
-/** Floating sound button + panel with independent switches for music and fight sound effects. */
+/** Switches for music and fight sound effects. Used by the floating button (menus) and the in-match Settings menu. */
+export function SoundPanel({ id }: { id?: string }) {
+  // Server snapshot = defaults, so hydration matches; the stored values apply right after.
+  const sound = useSyncExternalStore(subscribeSound, getSound, () => DEFAULT_SOUND);
+  return (
+    <div id={id} className="sound-panel" role="group" aria-label="Sound settings">
+      <Toggle label="Music" on={sound.music} onChange={(music) => setSound({ music })} />
+      <Toggle label="Fight sound effects" on={sound.sfx} onChange={(sfx) => setSound({ sfx })} />
+    </div>
+  );
+}
+
+/**
+ * Floating sound button for the screens outside a match. During a match the sound controls live in the
+ * Settings menu (GameStage), so nothing is rendered here.
+ */
 export default function SoundSettings({ inMatch }: { inMatch: boolean }) {
   const [open, setOpen] = useState(false);
-  // Server snapshot = defaults, so hydration matches; the stored values apply right after.
   const sound = useSyncExternalStore(subscribeSound, getSound, () => DEFAULT_SOUND);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || inMatch) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        e.stopPropagation(); // do not also leave the match
+        e.stopPropagation();
         setOpen(false);
       }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [open]);
+  }, [open, inMatch]);
+
+  if (inMatch) return null;
 
   return (
-    <div className={`sound-settings ${inMatch ? "in-match" : ""}`}>
+    <div className="sound-settings">
       <button
         className="btn ghost sound-fab"
         aria-expanded={open}
@@ -31,12 +47,7 @@ export default function SoundSettings({ inMatch }: { inMatch: boolean }) {
       >
         {sound.music || sound.sfx ? "♪" : "×"} Sound
       </button>
-      {open && (
-        <div id="sound-panel" className="sound-panel" role="dialog" aria-label="Sound settings">
-          <Toggle label="Music" on={sound.music} onChange={(music) => setSound({ music })} />
-          <Toggle label="Fight sound effects" on={sound.sfx} onChange={(sfx) => setSound({ sfx })} />
-        </div>
-      )}
+      {open && <SoundPanel id="sound-panel" />}
     </div>
   );
 }

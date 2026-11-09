@@ -27,7 +27,9 @@ export type NetMessage =
   /** Guest -> host: please restart the match. */
   | { type: "rematch-request" }
   /** Host -> guest: the match was restarted. */
-  | { type: "rematch" };
+  | { type: "rematch" }
+  /** Either side: the sender opened/closed its settings menu; both simulations stand still while anyone is paused. */
+  | { type: "pause"; paused: boolean };
 
 export interface MatchTransport {
   readonly roomId: RoomId;

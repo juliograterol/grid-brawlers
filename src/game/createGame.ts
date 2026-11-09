@@ -18,12 +18,16 @@ import { GuestSession, HostSession } from "./session/onlineSessions";
 import { RemoteInputSource } from "./input/remote";
 import type { MatchTransport } from "@/net/types";
 import type { MatchSession } from "./session/types";
+import type { SlotIndex } from "./types";
 
 export interface GameHandle {
   /** The on-screen buttons write into this. */
   touch: TouchSource;
   resize(cssScale: number): void;
   restart(): void;
+  /** Stop game time (and tell the opponent online). No-op once the match is over or the opponent left. */
+  pause(): void;
+  resume(): void;
   dispose(): void;
 }
 
@@ -39,6 +43,8 @@ export interface CreateGameOptions {
   onRestart?: () => void;
   /** The other player left or the connection dropped (online). */
   onDisconnect?: () => void;
+  /** Online only: which player's settings menu is holding the match paused (`null` = running). */
+  onPauseChange?: (pausedSlot: SlotIndex | null) => void;
   onMatchOver?: (result: { winner: 0 | 1 | "tie"; name: string | null }) => void;
 }
 
@@ -87,11 +93,25 @@ export async function createGame(opts: CreateGameOptions): Promise<GameHandle> {
     session.dispose();
     session = buildSession();
   };
+  // Pause: either player's settings menu freezes both sides. Never applies after the match ended or a disconnect.
+  let localPaused = false;
+  let remotePaused = false;
+  let disconnected = false;
+  const isPaused = () => !disconnected && session.state.phase !== "over" && (localPaused || remotePaused);
+  const reportPause = () => {
+    if (!transport) return;
+    const slot = localPaused ? transport.localSlot : remotePaused ? ((1 - transport.localSlot) as SlotIndex) : null;
+    opts.onPauseChange?.(isPaused() ? slot : null);
+  };
+
   const offNet: (() => void)[] = [];
   if (transport) {
     offNet.push(
       transport.onMessage((m) => {
-        if (m.type === "rematch" && transport.localSlot === 1) {
+        if (m.type === "pause") {
+          remotePaused = m.paused;
+          reportPause();
+        } else if (m.type === "rematch" && transport.localSlot === 1) {
           restartSession();
           opts.onRestart?.();
         } else if (m.type === "rematch-request" && transport.localSlot === 0) {
@@ -100,12 +120,17 @@ export async function createGame(opts: CreateGameOptions): Promise<GameHandle> {
           opts.onRestart?.();
         }
       }),
-      transport.onClose(() => opts.onDisconnect?.()),
+      transport.onClose(() => {
+        disconnected = true;
+        reportPause();
+        opts.onDisconnect?.();
+      }),
     );
   }
 
   const loop = new GameLoop(
     () => {
+      if (isPaused()) return; // no game time elapses while a settings menu is open
       const events = session.step();
       audio.handle(events, session.state);
       if (session.state.phase === "over" && !musicStopped) {
@@ -132,6 +157,18 @@ export async function createGame(opts: CreateGameOptions): Promise<GameHandle> {
       }
       restartSession();
       transport?.send({ type: "rematch" });
+    },
+    pause() {
+      if (localPaused || disconnected || session.state.phase === "over") return;
+      localPaused = true;
+      transport?.send({ type: "pause", paused: true });
+      reportPause();
+    },
+    resume() {
+      if (!localPaused) return;
+      localPaused = false;
+      if (!disconnected) transport?.send({ type: "pause", paused: false });
+      reportPause();
     },
     dispose() {
       offNet.forEach((off) => off());
