@@ -3,11 +3,12 @@
 import { useRef, useState } from "react";
 import {
   DEFAULT_DURATION_MINUTES,
-  DEFAULT_RULES,
+  DEFAULT_LIVES,
   LIVES_OPTIONS,
   MAX_DURATION_MINUTES,
   parseDurationMinutes,
   rulesFromMenu,
+  type GameMode,
   type GameRules,
   type Lives,
 } from "@/game/rules";
@@ -27,13 +28,14 @@ interface Props {
  */
 export default function RulesScreen({ onConfirm, onBack, confirmLabel = "START" }: Props) {
   const [minutes, setMinutes] = useState(String(DEFAULT_DURATION_MINUTES));
-  const [lives, setLives] = useState<Lives>(DEFAULT_RULES.lives);
+  const [mode, setMode] = useState<GameMode>("lives");
+  const [lives, setLives] = useState<Lives>(DEFAULT_LIVES);
   const livesRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const invalid = parseDurationMinutes(minutes) === null;
+  const invalid = mode === "time" && parseDurationMinutes(minutes) === null;
 
   const confirm = () => {
-    const rules = rulesFromMenu(minutes, lives); // invalid text -> 1 minute
+    const rules = rulesFromMenu(mode, minutes, lives); // invalid text -> 1 minute
     if (invalid) setMinutes(String(DEFAULT_DURATION_MINUTES));
     onConfirm(rules);
   };
@@ -58,7 +60,7 @@ export default function RulesScreen({ onConfirm, onBack, confirmLabel = "START" 
     } else if (e.key === "Enter" && !(e.target instanceof HTMLButtonElement)) {
       e.preventDefault();
       confirm();
-    } else if (e.target instanceof HTMLButtonElement && /^[1-3]$/.test(e.key)) {
+    } else if (mode === "lives" && e.target instanceof HTMLButtonElement && /^[1-3]$/.test(e.key)) {
       chooseLives(Number(e.key) as Lives, true);
     }
   };
@@ -68,6 +70,31 @@ export default function RulesScreen({ onConfirm, onBack, confirmLabel = "START" 
       <h2>Match Rules</h2>
 
       <section className="slot-panel rules-panel">
+        <div className="rules-row">
+          <span className="rules-label" id="rules-mode-label">Win condition</span>
+          <div className="lives-group" role="radiogroup" aria-labelledby="rules-mode-label">
+            {(["lives", "time"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={mode === m}
+                className={`lives-btn mode-btn ${mode === m ? "selected" : ""}`}
+                onClick={() => setMode(m)}
+              >
+                {m === "lives" ? "Lives" : "Time"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="hint">
+          {mode === "lives"
+            ? "No clock. Lose all your lives and you're out."
+            : "Unlimited respawns. Most KOs when the clock hits 0 wins."}
+        </p>
+
+        {mode === "time" && (
+        <>
         <label className="rules-row">
           <span className="rules-label">Fight duration (minutes)</span>
           <input
@@ -87,7 +114,10 @@ export default function RulesScreen({ onConfirm, onBack, confirmLabel = "START" 
             ? `Enter a number above 0 (max ${MAX_DURATION_MINUTES}). Otherwise ${DEFAULT_DURATION_MINUTES} minute is used.`
             : "Whole or decimal, e.g. 1, 2.5 or 0.5"}
         </p>
+        </>
+        )}
 
+        {mode === "lives" && (
         <div className="rules-row">
           <span className="rules-label" id="rules-lives-label">Lives per fighter</span>
           <div className="lives-group" role="radiogroup" aria-labelledby="rules-lives-label" onKeyDown={onLivesKey}>
@@ -109,6 +139,7 @@ export default function RulesScreen({ onConfirm, onBack, confirmLabel = "START" 
             ))}
           </div>
         </div>
+        )}
       </section>
 
       <div className="actions">

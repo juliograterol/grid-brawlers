@@ -24,7 +24,7 @@ import {
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from "./constants";
-import { DEFAULT_RULES, durationTicks, type GameRules } from "./rules";
+import { DEFAULT_LIVES, DEFAULT_RULES, durationTicks, type GameRules } from "./rules";
 import {
   EMPTY_INPUT,
   type AnimName,
@@ -41,7 +41,7 @@ export interface SlotSetup {
   name: string;
 }
 
-export function createFighter(slot: SlotIndex, setup: SlotSetup, lives: number = DEFAULT_RULES.lives): FighterState {
+export function createFighter(slot: SlotIndex, setup: SlotSetup, lives: number = DEFAULT_LIVES): FighterState {
   const def = getCharacter(setup.characterId);
   return {
     slot,
@@ -59,6 +59,7 @@ export function createFighter(slot: SlotIndex, setup: SlotSetup, lives: number =
     health: 100,
     lives,
     maxLives: lives,
+    kos: 0,
     respawnTicks: 0,
     invulnTicks: 0,
     damage: def.damage,
@@ -73,7 +74,9 @@ export function createFighter(slot: SlotIndex, setup: SlotSetup, lives: number =
 }
 
 export function createMatch(slots: [SlotSetup, SlotSetup], rules: GameRules = DEFAULT_RULES): MatchState {
+  const lives = rules.mode === "lives" ? rules.lives : 1; // lives are unused in time mode
   return {
+    mode: rules.mode,
     tick: 0,
     phase: "countdown",
     countdownTicks: COUNTDOWN_SECONDS * TICK_RATE,
@@ -81,19 +84,21 @@ export function createMatch(slots: [SlotSetup, SlotSetup], rules: GameRules = DE
     timeLeftTicks: durationTicks(rules),
     winner: null,
     endReason: null,
-    fighters: [createFighter(0, slots[0], rules.lives), createFighter(1, slots[1], rules.lives)],
+    fighters: [createFighter(0, slots[0], lives), createFighter(1, slots[1], lives)],
   };
 }
 
 /** Put a fighter back at its spawn point with full health (used after losing a life). */
 function respawn(f: FighterState) {
   const fresh = createFighter(f.slot, { characterId: f.characterId, name: f.name }, f.lives);
-  Object.assign(f, fresh, { maxLives: f.maxLives, invulnTicks: INVULN_TICKS });
+  Object.assign(f, fresh, { maxLives: f.maxLives, kos: f.kos, invulnTicks: INVULN_TICKS });
 }
 
-/** More lives wins, then more health; otherwise a tie. */
-function decideWinner(p0: FighterState, p1: FighterState): 0 | 1 | "tie" {
-  if (p0.lives !== p1.lives) return p0.lives > p1.lives ? 0 : 1;
+/** Time mode: more KOs wins. Lives mode: more lives wins. Then more health; otherwise a tie. */
+function decideWinner(mode: MatchState["mode"], p0: FighterState, p1: FighterState): 0 | 1 | "tie" {
+  if (mode === "time") {
+    if (p0.kos !== p1.kos) return p0.kos > p1.kos ? 0 : 1;
+  } else if (p0.lives !== p1.lives) return p0.lives > p1.lives ? 0 : 1;
   if (p0.health !== p1.health) return p0.health > p1.health ? 0 : 1;
   return "tie";
 }
@@ -264,7 +269,7 @@ export function stepMatch(
     }
   } else if (state.phase === "fighting") {
     if (state.goTicks > 0) state.goTicks--;
-    state.timeLeftTicks--;
+    if (state.mode === "time") state.timeLeftTicks--;
   }
 
   const live = state.phase === "fighting";
@@ -317,8 +322,9 @@ export function stepMatch(
     const def = getCharacter(f.characterId);
     if (f.invulnTicks > 0) f.invulnTicks--;
     if (f.health <= 0 && f.anim !== "death") {
-      f.lives = Math.max(0, f.lives - 1);
-      f.respawnTicks = f.lives > 0 ? RESPAWN_TICKS : 0;
+      if (state.mode === "lives") f.lives = Math.max(0, f.lives - 1);
+      else state.fighters[1 - f.slot].kos++;
+      f.respawnTicks = state.mode === "time" || f.lives > 0 ? RESPAWN_TICKS : 0;
       f.combo.swinging = false;
       f.combo.step = 0;
       setAnim(f, "death");
@@ -337,15 +343,17 @@ export function stepMatch(
 
   // 5) End conditions
   if (state.phase === "fighting") {
-    if (p0.lives <= 0 || p1.lives <= 0) {
-      state.phase = "over";
-      state.endReason = "ko";
-      state.winner = decideWinner(p0, p1);
+    if (state.mode === "lives") {
+      if (p0.lives <= 0 || p1.lives <= 0) {
+        state.phase = "over";
+        state.endReason = "ko";
+        state.winner = decideWinner(state.mode, p0, p1);
+      }
     } else if (state.timeLeftTicks <= 0) {
       state.timeLeftTicks = 0;
       state.phase = "over";
       state.endReason = "time";
-      state.winner = decideWinner(p0, p1);
+      state.winner = decideWinner(state.mode, p0, p1);
     }
   }
 

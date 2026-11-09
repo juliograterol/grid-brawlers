@@ -34,6 +34,8 @@ export interface FighterState {
   /** Lives left (the current one included) and the starting amount, from the match rules. */
   lives: number;
   maxLives: number;
+  /** Opponent KOs scored (decides the winner in time mode). */
+  kos: number;
   /** Ticks until a KO'd fighter with lives left respawns; 0 when not waiting to respawn. */
   respawnTicks: number;
   /** Ticks of damage immunity after a respawn. */
@@ -66,6 +68,8 @@ export interface FighterState {
 export type MatchPhase = "countdown" | "fighting" | "over";
 
 export interface MatchState {
+  /** "time" = clock + unlimited respawns, "lives" = no clock. */
+  mode: "time" | "lives";
   tick: number;
   phase: MatchPhase;
   /** Ticks left in the countdown, then in the "GO!" banner is `goTicks`. */

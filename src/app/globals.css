@@ -88,6 +88,7 @@ input {
 .hint.error { color: #ff8a80; opacity: 1; }
 .lives-group { display: flex; gap: 0.6rem; }
 .lives-btn { width: 3.2rem; height: 3.2rem; background: #000; border: 2px solid #555; border-radius: 6px; font-size: 1.2rem; cursor: pointer; }
+.lives-btn.mode-btn { width: auto; padding: 0 1rem; }
 .lives-btn:hover { border-color: #aaa; }
 .lives-btn.selected { border-color: var(--px-yellow); background: var(--px-orange); color: var(--px-black); box-shadow: 3px 3px 0 var(--px-black); }
 .lives-btn:focus-visible, .rules-input:focus-visible { outline: 3px solid #ffd54f; outline-offset: 2px; }

@@ -94,8 +94,13 @@ export class Renderer {
     this.bar(BAR_PAD, barW, p1, "right");
     this.bar(WORLD_WIDTH / 2 + TIMER_W / 2, barW, p2, "left");
     // Lives sit under each bar, next to the outer edge.
-    this.lives(BAR_PAD, p1, "left");
-    this.lives(WORLD_WIDTH - BAR_PAD, p2, "right");
+    if (state.mode === "lives") {
+      this.lives(BAR_PAD, p1, "left");
+      this.lives(WORLD_WIDTH - BAR_PAD, p2, "right");
+    } else {
+      this.kos(BAR_PAD, p1, "left");
+      this.kos(WORLD_WIDTH - BAR_PAD, p2, "right");
+    }
 
     // Timer box
     const tx = WORLD_WIDTH / 2 - TIMER_W / 2;
@@ -106,7 +111,9 @@ export class Renderer {
     ctx.strokeRect(tx, BAR_PAD, TIMER_W, TIMER_H);
 
     let timerText = "";
-    if (state.phase === "fighting") {
+    if (state.mode === "lives") {
+      timerText = state.phase === "over" ? "K.O." : "VS"; // no clock in lives mode
+    } else if (state.phase === "fighting") {
       // The clock is always visible (the "GO!" banner is drawn big in the centre instead).
       timerText = formatClock(state.timeLeftTicks / TICK_RATE);
     } else if (state.phase === "over") {
@@ -138,6 +145,16 @@ export class Renderer {
     ctx.strokeStyle = "white";
     ctx.lineWidth = 2;
     ctx.strokeRect(x, BAR_PAD, w, BAR_H);
+  }
+
+  /** Time mode: KOs scored, under each bar. */
+  private kos(edge: number, f: FighterState, side: "left" | "right") {
+    const { ctx } = this;
+    ctx.font = `14px ${this.pixelFont}`;
+    ctx.textAlign = side;
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "white";
+    ctx.fillText(`KOs: ${f.kos}`, edge, BAR_PAD + BAR_H + 8);
   }
 
   /** One heart per life: filled = left, outline = lost. `edge` is the x of the bar's outer edge. */
